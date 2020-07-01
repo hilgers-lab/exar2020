@@ -1,0 +1,12 @@
+iCount peak cross-link event counting in specific features
+
+Required input:
+- target regions
+- iCount peaks, bed format
+
+Output:
+- bed file with counted xl-events per feature
+
+Initial folder structure
+- <workdir>/iCount_peaks/<iclip_sample>.bed
+- <workdir>/regions/<sample>-<regions>.bed

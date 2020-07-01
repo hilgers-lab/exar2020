@@ -1,0 +1,71 @@
+import glob, os, yaml
+
+maindir = os.path.abspath(workflow.basedir)
+
+print(config)
+
+samplenames, = glob_wildcards(os.path.join('iCount_peaks','{sample}_peaks.bed'))
+regionnames, = glob_wildcards(os.path.join('regions','{regions}.bed'))
+
+# include: ""
+print(samplenames)
+print(regionnames)
+
+rule all:
+    input:
+        # expand(os.path.join("bigwigs","{sample}.sum.bw"), sample = samplenames),
+        expand(os.path.join("libsize","{sample}.libsize"),
+            sample = samplenames),
+        expand(os.path.join('coverage','{sample}-{region}.bed'),
+            sample = samplenames, region = regionnames)
+
+rule bed2bedgraph_stranded:
+  input:
+    icount_peaks = os.path.join("iCount_peaks", "{sample}_peaks.bed")
+  output:
+    bedgraph_pos = os.path.join("bigwigs", "{sample}_peaks_pos.bg"),
+    bedgraph_neg = os.path.join("bigwigs", "{sample}_peaks_neg.bg")
+  shell:
+    """
+    cat {input.icount_peaks} | awk '$6 == "+"' | awk -v OFS='\t' '{{print($1,$2,$3,$5)}}' > {output.bedgraph_pos} &&
+        cat {input.icount_peaks} | awk '$6 == "-"' | awk -v OFS='\t' '{{print($1,$2,$3,$5)}}' > {output.bedgraph_neg}
+    """
+
+rule sum_up_strand:
+    input:
+        bedgraphs = [ os.path.join("bigwigs", "{sample}_peaks_pos.bg"), os.path.join("bigwigs", "{sample}_peaks_neg.bg") ]
+    output:
+        bedgraph = os.path.join("bigwigs", "{sample}_peaks_sum.bg")
+    run:
+        shell("wiggletools write_bg {output.bedgraph} sum " + " ".join(input.bedgraphs))
+
+
+rule libsize:
+    input:
+        bedgraph = rules.sum_up_strand.output.bedgraph
+    output:
+        text = os.path.join("libsize","{sample}.libsize")
+    shell:
+        "cut -f 4 {input.bedgraph} | paste -sd '+' | bc > {output.text}"
+
+rule bedgraph2bigwig:
+    input:
+        bedgraph = rules.sum_up_strand.output.bedgraph,
+        chromsizes = config['chromsizes']
+    output:
+        bigwig = os.path.join("bigwigs","{sample}.sum.bw")
+    shell:
+        "bedGraphToBigWig {input.bedgraph} {input.chromsizes} {output.bigwig}"
+
+rule coverage:
+    input:
+        bigwig = rules.bedgraph2bigwig.output.bigwig,
+        bed = os.path.join('regions','{region}.bed')
+    output:
+        bed = os.path.join('coverage','{sample}-{region}.bed')
+    shell:
+        "python {script} {bigwig} {region} {bed}".format(
+            script = os.path.join(maindir,'bin/coverage_in_feature.py'),
+            bigwig = "{input.bigwig}",
+            region = "{input.bed}",
+            bed = "{output.bed}")

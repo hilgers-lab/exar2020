@@ -15,7 +15,7 @@ tpm4 <- function(counts, counts.total, len) {
 dm6.genes = import.gff('../dm6_ensembl96.gtf', feature.type = 'gene')
 gid2symbol = mcols(dm6.genes)[c('gene_id','gene_name')] %>% deframe
 
-workdir="" # snakemake workdir
+workdir="" # local snakemake workdir
 
 ctsMatSet_files <- list.files(paste0('../',workdir,'/coverage/'),pattern = '\\.bed$', full.names = TRUE)
 names(ctsMatSet_files) = gsub('elav_iclip\\.(.*_cDNA)-elav_wt.*sorted\\.(.*)\\.bed','\\1.\\2', basename(ctsMatSet_files))

@@ -1,0 +1,73 @@
+import glob, os, yaml
+
+maindir = os.path.abspath(workflow.basedir)
+
+# configfile: None
+
+# config=dict()
+config['fastq_directory']='Fastq_demux/'
+print(config)
+# config['annotation']="resources/genes.gtf"
+# # config['star_index']="resources/STARindex_dm6"
+# config['star_index']="resources/STARIndex"
+# config['fasta_index']="resources/genome.fa.fai"
+# config['mapq_threshold']=3
+# config['use.segmentation']=False
+
+config_peakcalling = dict()
+config_peakcalling['nperm']=100    # default: 100
+config_peakcalling['fdr']=0.01       # default: 0.01
+
+quantification_modes = ["reads", "cDNA"]
+annotation_types = ['biotype', 'gene_id']
+transcript_features = ['CDS', 'intron', 'ncRNA', 'UTR3', 'UTR5']
+
+samplenames, = glob_wildcards(os.path.join(config["fastq_directory"],'{sample}.fastq.gz'))
+print(samplenames)
+print(config)
+
+include: os.path.join(maindir, "rules", "iCount_workflow.snakefile")
+
+rule all:
+    input:
+        # require STAR mapping
+        expand(os.path.join('mapstar','{sample}','Aligned.sortedByCoord.out.bam'), \
+            sample = samplenames),
+        expand(os.path.join("Alignments","{sample}.bam"),
+            sample = samplenames),
+        # require xlsites, protected
+        expand(os.path.join("xlsites","{sample}_{quantification_mode}_singles.bed"), \
+            sample = samplenames, quantification_mode = quantification_modes),
+        # require clusters
+        expand(os.path.join("Peak_calling", "clusters", "{sample}_{quantification_mode}_clusters.bed"), \
+            sample = samplenames, quantification_mode = quantification_modes),
+        expand(os.path.join("Peak_calling","peaks_{feature}","{sample}_{quantification_mode}_peaks.bed"),
+            sample = samplenames, feature = ['intron','UTR3','UTR5'], quantification_mode = 'cDNA'),
+        expand(os.path.join("Peak_calling", "clusters_{feature}", "{sample}_{quantification_mode}_clusters.bed"),
+            sample = samplenames, feature = ['intron','UTR3','UTR5'], quantification_mode = 'cDNA'),
+        # expand(os.path.join("Peak_calling","peaks_intronic","{sample}_{quantification_mode}_peaks.bed"),
+        #     sample = samplenames, quantification_mode = quantification_modes),
+
+
+
+        # require annotations {xlsites, peaks}
+        expand(os.path.join("annotate_xlsites", "{sample}_{quantification_mode}_singles_{annotation_type}.bed"), \
+            sample = samplenames, quantification_mode = quantification_modes,  annotation_type = annotation_types),
+        expand(os.path.join("annotate_peaks", "{sample}_{quantification_mode}_peaks_{annotation_type}.bed"), \
+            sample = samplenames, quantification_mode = quantification_modes,  annotation_type = annotation_types),
+
+        # require summary {xlsites, peaks}
+        expand(os.path.join("summary_xlsites","summary_{sample}_{quantification_mode}", "summary_gene.tsv"), \
+            sample = samplenames, quantification_mode = quantification_modes),
+        expand(os.path.join("summary_peaks","summary_{sample}_{quantification_mode}","summary_gene.tsv"), \
+            sample = samplenames, quantification_mode = quantification_modes),
+
+        expand(os.path.join("summary_per_feature_peaks","summary_{sample}_{quantification_mode}_peaks_{annotation_type}.{feature}","summary_gene.tsv"),
+            sample = samplenames, quantification_mode = quantification_modes, annotation_type = annotation_types[0], feature = transcript_features),
+
+        # require bedgraph
+        expand('bedgraph/{sample}_{quantification_mode}_peaks.bedgraph', \
+            sample = samplenames, quantification_mode = quantification_modes),
+        expand('bedgraph_{feature}/{sample}_{quantification_mode}_peaks.bedgraph',
+            feature = ['intron','UTR3','UTR5'],
+            sample = samplenames, quantification_mode = quantification_modes),

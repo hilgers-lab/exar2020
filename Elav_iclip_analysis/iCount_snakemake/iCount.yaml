@@ -1,0 +1,9 @@
+# genome annotation, gtf
+annotation: 
+# STAR index
+star_index: 
+# fasta index
+fasta_index: 
+mapq_threshold: 3
+# can be omitted to speed up iCount. https://github.com/tomazc/iCount/issues/191
+use_segmentation: False

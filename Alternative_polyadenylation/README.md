@@ -134,7 +134,7 @@ Run Snakemake pipeline:
 
 ```
 module load snakemake
-bash run_snakemake.sh results/ config.yaml
+bash run_snakemake.sh results/ config.yaml [<snakemake parameter>]
 ```
 
 ## Output
@@ -168,7 +168,9 @@ utr3_quantification
 
 
 ## Contributors
+
 Dr. Barbara Hummel
+
 Michael Rauer
 
 
